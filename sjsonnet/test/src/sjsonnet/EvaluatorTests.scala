@@ -186,6 +186,22 @@ object EvaluatorTests extends TestSuite{
 
       assert(ex.getMessage.contains("Function parameter y not bound in call"))
     }
+    'undefinedParam - {
+      val ex = intercept[Exception]{
+        eval(
+          """local newParams() = {
+            |};
+            |
+            |local params = newParams(foo = 0);
+            |
+            |params.foo
+            |
+        """.stripMargin
+        )
+      }
+
+      assert(ex.getMessage.contains("function has no parameter: foo"))
+    }
 //    'format - {
 //      eval("\"%s\" % \"world\"") ==> Value.Str("world")
 //      eval("\"%s\" % [\"world\"]") ==> Value.Str("world")

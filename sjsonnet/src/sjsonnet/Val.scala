@@ -5,6 +5,8 @@ import sjsonnet.Expr.Params
 
 import scala.reflect.ClassTag
 
+case class UndefinedParameterException(parameter: String) extends IllegalArgumentException
+
 object Lazy{
   def apply(calc0: => Val) = new Lazy(calc0)
 }
@@ -162,14 +164,21 @@ object Val{
           case (k, Some(default)) => (k, (self: Val.Obj, sup: Option[Val.Obj]) => Lazy(evalDefault(default, newScope)))
         }
 
+      lazy val definedParameters = params.args.map(_._1).toSet
       lazy val newScope2 = try
         args.zipWithIndex.map{
-          case ((Some(name), v), _) => (name, (self: Val.Obj, sup: Option[Val.Obj]) => v)
+          case ((Some(name), v), _) =>
+            if (definedParameters.contains(name))
+              (name, (self: Val.Obj, sup: Option[Val.Obj]) => v)
+            else
+              throw UndefinedParameterException(name)
           case ((None, v), i) => (params.args(i)._1, (self: Val.Obj, sup: Option[Val.Obj]) => v)
         }
       catch{
         case e: IndexOutOfBoundsException =>
           Evaluator.fail("Too many args, function has " + params.args.length + " parameter(s)", scope.currentFile, outerOffset, wd)
+        case UndefinedParameterException(parameter) =>
+          Evaluator.fail(s"function has no parameter: $parameter", scope.currentFile, outerOffset, wd)
       }
       lazy val seen = collection.mutable.Set.empty[String]
       for((k, v) <- newScope2){
